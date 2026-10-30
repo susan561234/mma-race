@@ -1,0 +1,16 @@
+{
+  "name": "mma-race",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "collect": "node scripts/collect.js",
+    "build:pages": "node scripts/build-pages.js"
+  }
+}

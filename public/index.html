@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111510">
+  <meta name="data-mode" content="server">
+  <meta name="description" content="MMA 2026 非官方公開投票觀測站。用賽跑排名與歷史曲線，觀看每一票的變化。">
+  <title>MMA RACE — 每一票，都在前進</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./race3d.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="MMA Race 首頁"><span class="brand-mark">M</span><span>MMA<span class="brand-light">RACE</span><small>2026 VOTE OBSERVATORY</small></span></a>
+    <nav aria-label="主要導覽"><a class="active" href="#race">賽況總覽</a><a href="#trends">票數趨勢</a><a href="#about">關於資料 <span>↗</span></a></nav>
+    <span class="public-badge"><i></i>公開觀測 · 無需登入</span>
+  </header>
+  <main>
+    <section class="hero">
+      <div><p class="eyebrow"><span></span> MELON MUSIC AWARDS / 2026</p><h1>每一票，<br class="mobile-break">都在<span>前進。</span><span class="hero-star" aria-hidden="true">✳</span></h1><p class="hero-copy">把應援化成看得見的距離。一起見證，屬於他們的每一次超越。</p></div>
+      <div class="hero-meta"><span class="edition">THE FANDOM<br>GRAND PRIX <b>’26</b></span><span class="update-tag">↻ 每 5 分鐘收集一次</span></div>
+    </section>
+    <div id="status" class="status-banner" role="status" aria-live="polite">正在讀取觀測資料…</div>
+    <section class="category-section" aria-label="選擇投票分類">
+      <div class="section-kicker">01 / 選擇賽道 <span>API 未提供正式獎項名稱，以下以類型及代碼區分</span></div>
+      <div id="categories" class="categories"></div>
+    </section>
+    <section class="stats" aria-label="分類摘要">
+      <article><span>本分類累計票數</span><strong id="total-votes">—</strong><small>所有候選項目加總</small></article>
+      <article><span>目前領跑者 <span class="tiny-flag">⚑</span></span><strong id="leader-name">—</strong><small id="leader-share">—</small></article>
+      <article><span>前兩名票差</span><strong id="lead-gap">—</strong><small>同票時以候選 ID 排列</small></article>
+      <article class="clock-card"><span>下次資料收集</span><strong id="countdown">—</strong><small id="last-update">尚無成功抓取紀錄</small></article>
+    </section>
+    <section id="race" class="panel race-panel">
+      <div class="panel-heading"><div><p class="eyebrow">FANDOM GRAND PRIX / 3D BROADCAST</p><h2>應援競速場 <span id="race-category"></span></h2></div><div class="race-controls"><span class="track-key"><i></i> 原創 Q 版應援代表</span><button id="motion-toggle" class="subtle-button" type="button" aria-pressed="false">暫停動畫</button></div></div>
+      <div id="broadcast" class="broadcast">
+        <div class="broadcast-top"><span class="broadcast-tag">3D RACE <b>虛擬競技場</b></span><span class="broadcast-caption">ORIGINAL FAN CHARACTERS</span></div>
+        <div id="race-viewport" class="race-viewport" role="img" aria-label="3D 應援人物賽跑動畫，角色位置對應票數；詳細數字請見下方排行榜"></div>
+        <div id="race-labels" class="race-labels" aria-hidden="true"></div>
+        <p id="race-render-status" class="race-render-status" role="status">正在準備 3D 競技場…</p>
+        <div class="broadcast-bottom"><div><span class="broadcast-caption">ON TRACK</span><strong id="race-commentary">每一票，都是前進的力量。</strong></div><button id="camera-overview" type="button" class="camera-button" aria-pressed="true">全景鏡頭</button></div>
+      </div>
+      <div class="cast-toolbar"><span>點選角色卡，切換人物特寫</span><div><button id="cast-prev" class="subtle-button" type="button" aria-label="上一組角色">←</button><span id="cast-page"></span><button id="cast-next" class="subtle-button" type="button" aria-label="下一組角色">→</button></div></div>
+      <div id="character-cards" class="character-cards" aria-label="3D 應援代表與特寫鏡頭"></div>
+      <p class="character-disclaimer">角色、造型與配色為原創應援設計，非成員本人或官方應援色。跑步節奏為視覺動畫，不代表新增票速。每組展示 5 位，可翻頁觀看全部候選人。</p>
+      <div class="track-scale"><span>START</span><span>以領先者票數為基準，非投票結束進度</span><span>LEADER ⚑</span></div>
+      <div id="lanes" class="lanes"></div>
+      <div class="panel-foot"><span>跑道隨票數更新移動，人物動畫不代表即時新增票數。</span><button id="expand-race" class="text-button" type="button" aria-expanded="false">查看全部候選人 ↓</button></div>
+    </section>
+    <div class="bottom-grid">
+      <section id="trends" class="panel trend-panel">
+        <div class="panel-heading"><div><p class="eyebrow">EVERY VOTE LEAVES A TRACE</p><h2>應援軌跡</h2></div><button id="export" class="subtle-button" type="button">↓ 匯出 CSV</button></div>
+        <div class="chart-toolbar"><div class="segmented" aria-label="曲線指標"><button type="button" data-metric="voteCount" aria-pressed="true">累計票數</button><button type="button" data-metric="votePercent" aria-pressed="false">官方得票率</button></div><div class="range-buttons" aria-label="觀測時間範圍"><button type="button" data-range="1h" aria-pressed="false">1H</button><button type="button" data-range="6h" aria-pressed="false">6H</button><button type="button" data-range="24h" aria-pressed="true">24H</button><button type="button" data-range="7d" aria-pressed="false">7D</button></div></div>
+        <div id="chart" class="chart" aria-live="polite"></div>
+        <div id="legend" class="legend" aria-label="選擇顯示的候選曲線"></div>
+        <p class="chart-note">僅記錄成功抓取的真實樣本；超過 7.5 分鐘的缺口會斷線。可點選下方候選人比較。</p>
+      </section>
+      <section class="panel ranking-panel">
+        <div class="panel-heading"><div><p class="eyebrow">THE STANDINGS</p><h2>票數排行榜</h2></div><span id="nominee-count" class="count-pill">—</span></div>
+        <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="搜尋藝人或作品" placeholder="搜尋藝人或作品" autocomplete="off"></label>
+        <div class="ranking-head"><span>排名 / 候選項目</span><span>票數 / 得票率</span></div>
+        <div id="rankings" class="rankings"></div>
+        <p class="ranking-note">得票率採用 API 官方數值，四捨五入後合計可能不等於 100%。</p>
+      </section>
+    </div>
+    <footer id="about"><div class="footer-brand">MMA<span>RACE</span> <small>FAN-MADE. DATA-DRIVEN.</small></div><p>非官方投票觀測站，與 Melon / MMA 無隸屬關係。排名不代表最終得獎結果。<br>資料來源：Melon 公開 API。歷史紀錄自本服務成功收集後開始累積，停機期間無法補回。</p><a href="https://m2.melon.com/m6/mma/2026/vote/category.json?lang=ko" target="_blank" rel="noopener noreferrer">查看資料來源 ↗</a></footer>
+  </main>
+</body>
+</html>

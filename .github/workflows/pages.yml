@@ -1,0 +1,89 @@
+name: Collect votes and deploy Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: mma-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  collect-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - name: Restore durable observation archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code origin refs/heads/vote-data; then
+            git fetch --depth=1 origin vote-data
+            git worktree add vote-state FETCH_HEAD
+          else
+            code=$?
+            if [ "$code" -ne 2 ]; then exit "$code"; fi
+            mkdir vote-state
+            git -C vote-state init -b vote-data
+          fi
+      - name: Collect current vote counts
+        id: collect
+        continue-on-error: true
+        run: npm run collect
+      - name: Persist observations and error status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C vote-state config user.name "github-actions[bot]"
+          git -C vote-state config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C vote-state add daily dashboard.json
+          if [ -f vote-state/latest.json ]; then git -C vote-state add latest.json; fi
+          if ! git -C vote-state diff --cached --quiet; then
+            git -C vote-state commit -m "Update public MMA observations" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+            git fetch vote-state HEAD
+            git push origin FETCH_HEAD:refs/heads/vote-data
+          fi
+      - run: npm run build:pages
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Report upstream failure without discarding the status page
+        if: steps.collect.outcome == 'failure'
+        run: |
+          echo "::warning::Melon collection failed. The site will show the last successful snapshot or the provided snapshot with an explicit error."
+          echo "### Collection failed; last successful data preserved" >> "$GITHUB_STEP_SUMMARY"
+    outputs:
+      collection: ${{ steps.collect.outcome }}
+  deploy:
+    needs: collect-and-build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy public site
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Mark collection failure explicitly
+        if: needs.collect-and-build.outputs.collection == 'failure'
+        run: |
+          echo "::error::Website deployed, but the upstream API collection failed. See the collection job and site status."
+          exit 1

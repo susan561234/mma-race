@@ -1,0 +1,39 @@
+.broadcast{position:relative;margin:0 18px;border:1px solid #42546a;border-radius:12px;overflow:hidden;background:#162435;isolation:isolate}
+.race-viewport{width:100%;height:560px;cursor:pointer}
+.race-viewport canvas{display:block;width:100%;height:100%}
+.broadcast-top,.broadcast-bottom{position:absolute;left:0;right:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:15px;pointer-events:none}
+.broadcast-top{top:0;padding:19px 22px;background:linear-gradient(#0e192be6,transparent)}
+.broadcast-tag{font-size:12px;font-style:italic;letter-spacing:1px;font-weight:850;background:var(--lime);padding:8px 11px;color:#172514;transform:skewX(-6deg)}
+.broadcast-tag b{font-style:normal;font-size:10px;font-weight:500;letter-spacing:0;border-left:1px solid #708a4a;padding-left:9px;margin-left:9px}
+.broadcast-caption{color:#c3d0df;font-size:8px;letter-spacing:2px}
+.broadcast-bottom{bottom:0;padding:35px 22px 20px;background:linear-gradient(transparent,#0b1729ed)}
+.broadcast-bottom strong{display:block;font-size:15px;margin-top:8px;letter-spacing:.3px;font-weight:550;max-width:650px}
+.camera-button{pointer-events:auto;background:#182a3ed9;border:1px solid #637990;border-radius:7px;padding:10px 15px;color:#e3edf7;white-space:nowrap;font-size:11px}
+.camera-button[aria-pressed=true]{border-color:#b4e17d;color:#d5f7af}
+.race-labels{position:absolute;inset:0;pointer-events:none;z-index:1}
+.racer-label{position:absolute;transform:translate(-50%,-100%);background:#102036e8;box-shadow:0 4px 12px #0003;border:1px solid #658097;border-top:3px solid var(--team);padding:5px 9px;border-radius:5px;text-align:center;max-width:145px;min-width:72px}
+.racer-label strong{font-size:10px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f0f3f8}
+.racer-label small{font-size:9px;color:#c5d6e5;display:block;margin-top:3px;font-variant-numeric:tabular-nums}
+.racer-label.is-focused{padding:9px 16px;max-width:250px}.racer-label.is-focused strong{font-size:13px}
+.race-render-status{position:absolute;inset:35% 12% auto;text-align:center;color:#e5e9f1;background:#142236e8;padding:22px;border:1px solid #6f8397;border-radius:9px;font-size:13px;line-height:1.8;z-index:3}
+.race-render-status[hidden],.racer-label[hidden]{display:none}
+.cast-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:17px 22px 12px;color:var(--muted);font-size:11px}
+.cast-toolbar>div{display:flex;gap:12px;align-items:center}.cast-toolbar button{min-width:35px}
+#cast-page{font-size:10px;font-variant-numeric:tabular-nums}
+.character-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;padding:0 22px}
+.character-card{position:relative;text-align:left;overflow:hidden;background:#202a2d;border:1px solid #3c4b50;border-radius:9px;padding:14px 12px 12px;color:#d9e3eb;min-width:0;transition:border-color .2s,background .2s}
+.character-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--team)}
+.character-card[aria-pressed=true]{background:#2a3841;border-color:var(--team);box-shadow:inset 0 0 20px #ffffff04}
+.character-card:hover{border-color:var(--team)}
+.character-card .cast-number{font-size:9px;color:var(--team);letter-spacing:1px;display:block;margin-bottom:8px}
+.character-card strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.character-card small{display:block;color:#9daeba;font-size:9px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.character-card .cast-votes{display:block;font-size:12px;color:var(--team);margin-top:11px;font-variant-numeric:tabular-nums}
+.character-disclaimer{margin:13px 22px 23px;font-size:10px;line-height:1.9;color:var(--muted)}
+.race-panel .track-scale{margin-top:8px}.race-panel .lane{min-height:53px}.race-panel .track{height:53px}
+.race-panel .track-trail{top:22px;height:7px}.race-panel .track:after{top:30px}
+.race-panel .track-value{position:absolute;right:5px;top:33px;color:var(--color);font-size:9px;font-variant-numeric:tabular-nums}
+.race-panel .track:before{content:"";position:absolute;width:8px;height:8px;background:var(--color);border-radius:50%;top:22px;left:calc(var(--position)*1%);transform:translateX(-50%);transition:left 1.8s}
+@media(max-width:640px){.racer-label:not(.is-focused){min-width:24px;width:24px;height:24px;border-radius:50%;border:1px solid var(--team);padding:4px 0}.racer-label:not(.is-focused):before{content:attr(data-rank);font-size:9px;color:var(--team)}.racer-label:not(.is-focused) strong,.racer-label:not(.is-focused) small{display:none}}
+@media(max-width:800px){.race-viewport{height:480px}.broadcast-bottom strong{font-size:12px;max-width:420px}.character-cards{gap:6px}.character-card{padding:12px 9px}.character-card strong{font-size:10px}}
+@media(max-width:640px){.broadcast{margin:0 10px}.race-viewport{height:440px}.broadcast-top{padding:14px 12px}.broadcast-top>.broadcast-caption{display:none}.broadcast-bottom{padding:30px 12px 14px;align-items:flex-end}.broadcast-bottom strong{font-size:11px;line-height:1.7;max-width:200px}.broadcast-caption{font-size:7px;letter-spacing:1px}.broadcast-tag{font-size:10px}.camera-button{font-size:9px;padding:8px 9px}.racer-label{max-width:87px;min-width:50px;padding:3px 4px}.racer-label strong{font-size:8px}.racer-label small{font-size:7px}.character-cards{display:flex;overflow-x:auto;padding:0 15px 8px;scrollbar-width:thin;scrollbar-color:#506274 transparent}.character-card{min-width:125px;flex:0 0 125px;padding:13px}.character-card strong{font-size:11px}.cast-toolbar{margin:15px;font-size:10px}.character-disclaimer{margin:10px 15px 20px;font-size:9px}.race-render-status{font-size:11px;padding:15px}}
