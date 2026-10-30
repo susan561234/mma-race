@@ -436,7 +436,7 @@ export class Race3D {
       character.targetZ = (index - (nominees.length - 1) / 2) * 2.9;
       character.label.style.setProperty('--team', character.profile.color);
       character.label.dataset.rank = String(rankOffset + index + 1).padStart(2, '0');
-      character.label.firstChild.textContent = character.profile.name;
+      character.label.firstChild.textContent = character.profile.characterName;
       character.label.lastChild.textContent = `${number.format(nominee.voteCount)} 票`;
       poseCharacter(character, this.time);
     });

@@ -67,24 +67,23 @@ function portrait(nominee, className) {
 
 function renderStatus() {
   const data = state.dashboard;
-  const element = $('#status');
-  element.className = 'status-banner';
+  const element = $('#last-update');
+  element.dataset.warning = String(Boolean(state.connectionError || data?.source === 'provided' || data?.stale));
+  const lastSuccess = data?.capturedAt ? `最後成功 ${shortTime(data.capturedAt)}` : '尚無成功紀錄';
   let message;
   if (state.connectionError) {
-    element.classList.add('error');
-    message = `平台連線中斷：${state.connectionError}。畫面保留上次資料，15 秒後自動重試。`;
+    message = `連線中斷（${state.connectionError}）· ${lastSuccess}，將自動重試`;
   } else if (!data) {
     message = '正在讀取觀測資料…';
   } else if (data.source === 'provided') {
-    message = `提供的快照 · 非即時資料，原始觀測時間未知。${data.error ? `目前 ${data.error}；` : '正在等待首次成功收集；'}尚未累積歷史曲線。`;
+    message = `提供的快照 · 非即時資料${data.error ? ` · ${data.error}` : ' · 等待首次收集'}`;
   } else if (data.stale) {
-    element.classList.add('error');
-    message = `資料延遲 · 最後成功收集於 ${time(data.capturedAt)}。${data.error ?? '已超過預期更新時間。'} 保留最後成功資料，不補造紀錄。`;
+    message = `資料延遲 · ${lastSuccess}${data.error ? ` · ${data.error}` : ''}`;
   } else {
-    element.classList.add('live');
-    message = `API 已連線 · 最後成功收集於 ${time(data.capturedAt)}。${pages ? 'Actions 每 5 分鐘排程，實際執行與發布可能延遲。' : '背景每 5 分鐘更新，網頁自動同步。'}`;
+    message = `成功收集 ${shortTime(data.capturedAt)}`;
   }
-  element.replaceChildren(node('span', 'status-dot'), node('span', '', message));
+  element.textContent = message;
+  element.title = data?.capturedAt ? `最後成功收集於 ${time(data.capturedAt)}` : '原始觀測時間未知，未產生歷史樣本';
 }
 
 function renderCategories() {
@@ -106,7 +105,6 @@ function renderStats() {
   $('#leader-name').title = leader.content.name;
   $('#leader-share').textContent = `官方得票率 ${leader.votePercent}% · ${number.format(leader.voteCount)} 票`;
   $('#lead-gap').textContent = list.length > 1 ? `${number.format(leader.voteCount - list[1].voteCount)} 票` : '—';
-  $('#last-update').textContent = state.dashboard.capturedAt ? `成功收集 ${shortTime(state.dashboard.capturedAt)}` : '快照無原始觀測時間';
   $('#race-category').textContent = categoryName(state.categoryId);
   $('#race-category').title = state.categoryId;
   $('#nominee-count').textContent = `${list.length} 位候選`;
@@ -179,19 +177,22 @@ function renderCastCards() {
     button.type = 'button';
     button.style.setProperty('--team', profile.color);
     button.setAttribute('aria-pressed', String(nominee.content.id === state.focusId));
-    button.setAttribute('aria-label', `${profile.name}：${profile.title}，${number.format(nominee.voteCount)} 票，切換 3D 特寫`);
+    const description = profile.characterName === profile.name ? profile.title : `${profile.name} · ${profile.title}`;
+    button.setAttribute('aria-label', `${profile.characterName}：${description}，${number.format(nominee.voteCount)} 票，切換 3D 特寫`);
     button.append(
       node('span', 'cast-number', `RACER ${String(state.castPage * 5 + index + 1).padStart(2, '0')}`),
-      node('strong', '', profile.name), node('small', '', profile.title),
+      node('strong', '', profile.characterName), node('small', '', description),
       node('span', 'cast-votes', `${number.format(nominee.voteCount)} 票`)
     );
     button.addEventListener('click', () => focusCharacter(nominee.content.id));
     return button;
   }));
   const focused = list.find(item => item.content.id === state.focusId);
+  const profile = characterProfile(focused ?? list[0]);
+  const displayName = profile.characterName === profile.name ? profile.name : `${profile.characterName}（${profile.name}）`;
   $('#race-commentary').textContent = focused
-    ? `${characterProfile(focused).name} / ${characterProfile(focused).title}`
-    : `${characterProfile(list[0]).name} 目前領跑 · 應援代表競速中`;
+    ? `${displayName} / ${profile.title}`
+    : `${displayName} 目前領跑 · 應援代表競速中`;
   $('#camera-overview').setAttribute('aria-pressed', String(!state.focusId));
   $('#cast-page').textContent = `${state.castPage + 1} / ${Math.ceil(list.length / 5)}`;
   $('#cast-prev').disabled = state.castPage === 0;

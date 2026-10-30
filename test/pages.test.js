@@ -33,6 +33,8 @@ test('Pages collection persists real samples, preserves failures, and builds sub
     assert.equal(readJson(join(output, 'data/history/V26005.json')).length, 30);
     const html = readFileSync(join(output, 'index.html'), 'utf8');
     assert.match(html, /name="data-mode" content="pages"/);
+    assert.doesNotMatch(html, /id="status"/);
+    assert.match(html, /id="last-update" role="status" aria-live="polite"/);
     assert.doesNotMatch(html, /(?:src|href)="\/(?!\/)/);
     assert.match(readFileSync(join(output, 'categories.js'), 'utf8'), /年度藝人/);
     assert.match(readFileSync(join(output, 'app.js'), 'utf8'), /from '\.\/categories.js'/);
