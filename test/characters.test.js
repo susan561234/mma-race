@@ -34,6 +34,19 @@ test('running animation articulates opposite hips, arms and knees over time, not
   assert.deepEqual(runningPose(3, 5), runningPose(3, 5));
 });
 
+test('IVE uses the supplied-reference long-ear mascot consistently across artist, album and song categories', () => {
+  const artist = characterProfile(seedCategories[7].nominees[0]);
+  const album = characterProfile(seedCategories[1].nominees[4]);
+  const song = characterProfile(seedCategories[2].nominees[0]);
+  assert.equal(artist.model, 'ive-long-ear');
+  assert.equal(artist.accessory, 'beret');
+  assert.equal(artist.color, '#467bc3');
+  assert.deepEqual(artist, album);
+  assert.deepEqual(artist, song);
+  assert.equal(characterProfile({ content: { name: 'IVE' } }).model, 'ive-long-ear');
+  assert.equal(characterProfile(seedCategories[0].nominees[0]).model, 'human');
+});
+
 test('position corresponds to votes rather than gait time, is bounded, and handles all-zero counts', () => {
   assert.equal(trackPosition(0, 0), -8);
   assert.equal(trackPosition(100, 100), 8);

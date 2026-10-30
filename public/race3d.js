@@ -47,7 +47,99 @@ function disposeTree(root) {
   textures.forEach(item => item.dispose());
 }
 
+function createIveCharacter(profile) {
+  const root = new THREE.Group();
+  const body = pivot(root, 0, 0, 0);
+  const fur = material('#fffdf5', .85);
+  const blue = material('#315eaa');
+  const piping = material('#203b65');
+  const pink = material('#f3a5be');
+  const black = material('#17222c', .25);
+  const light = material('#ffffff', .35);
+  const torso = ball(body, blue, [0, 1.18, 0], [.35, .37, .255]);
+  torso.rotation.x = -.08;
+  const shirt = mesh(body, new THREE.ConeGeometry(.15, .29, 3), fur, [0, 1.3, .252], [1, 1, .16]);
+  shirt.rotation.z = Math.PI;
+  for (const side of [-1, 1]) {
+    const lapel = box(body, piping, [side * .14, 1.34, .245], [.07, .28, .04]);
+    lapel.rotation.z = side * -.5;
+    ball(body, pink, [side * .075, 1.43, .28], [.07, .08, .045]);
+  }
+  ball(body, fur, [0, 1.43, .3], [.04, .045, .025]);
+  for (let index = 0; index < 3; index++) ball(body, fur, [0, 1.24 - index * .12, .262], [.027, .027, .025]);
+  const skirt = pivot(body, 0, .86, 0);
+  mesh(skirt, new THREE.CylinderGeometry(.28, .43, .28, 24), pink, [0, 0, 0]);
+  for (let index = 0; index < 12; index++) {
+    const angle = index * Math.PI / 6;
+    const pleat = mesh(skirt, new THREE.CapsuleGeometry(.026, .18, 3, 5), pink,
+      [Math.cos(angle) * .385, -.045, Math.sin(angle) * .385]);
+    pleat.rotation.z = -Math.cos(angle) * .36;
+    pleat.rotation.x = Math.sin(angle) * .36;
+  }
+  const head = pivot(body, 0, 1.98, 0);
+  ball(head, fur, [0, 0, 0], [.59, .54, .45]);
+  const ears = [];
+  for (const side of [-1, 1]) {
+    const ear = pivot(head, side * .47, .2, -.09);
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.bezierCurveTo(.12, -.18, .42, -.62, .48, -.98);
+    shape.bezierCurveTo(.56, -1.35, .03, -1.52, -.1, -1.12);
+    shape.bezierCurveTo(-.15, -.8, -.14, -.25, 0, 0);
+    mesh(ear, new THREE.ExtrudeGeometry(shape, { depth: .12, bevelEnabled: true, bevelSize: .055, bevelThickness: .06, bevelSegments: 3, steps: 1, curveSegments: 12 }), fur);
+    ear.scale.x = side;
+    ears.push(ear);
+    ball(head, black, [side * .22, -.035, .427], [.106, .14, .035]);
+    ball(head, light, [side * .21, .015, .46], [.04, .046, .016]);
+    ball(head, light, [side * .235, -.085, .46], [.021, .021, .012]);
+    for (let index = 0; index < 2; index++) {
+      const lash = box(head, black, [side * (.28 + index * .04), .07 - index * .03, .42], [.027, .095, .022]);
+      lash.rotation.z = side * -.65;
+    }
+    ball(head, pink, [side * .37, -.19, .375], [.1, .055, .025]);
+  }
+  ball(head, black, [0, -.19, .45], [.035, .022, .02]);
+  for (const side of [-1, 1]) {
+    const mouth = mesh(head, new THREE.TorusGeometry(.065, .014, 6, 14, Math.PI), black, [side * .061, -.22, .437]);
+    mouth.rotation.z = Math.PI;
+  }
+  const curl = mesh(head, new THREE.TorusGeometry(.105, .02, 6, 18, Math.PI * 1.05), black, [-.045, .27, .395]);
+  curl.rotation.z = Math.PI;
+  const curlTip = mesh(head, new THREE.TorusGeometry(.065, .018, 6, 14, Math.PI * .9), black, [.095, .25, .41]);
+  curlTip.rotation.z = Math.PI;
+  const hat = pivot(head, 0, .42, -.025);
+  hat.rotation.z = -.1;
+  ball(hat, blue, [0, .085, 0], [.65, .28, .51]);
+  mesh(hat, new THREE.TorusGeometry(.54, .037, 8, 32), piping, [0, -.025, 0], [1, .86, 1]).rotation.x = Math.PI / 2;
+  ball(hat, piping, [0, .37, 0], [.055, .055, .05]);
+  // Small white stitched emblem on the beret, matching the reference's placement.
+  for (const side of [-1, 1]) ball(hat, fur, [.34 + side * .025, .13, .446], [.03, .033, .018]);
+  const stitch = mesh(hat, new THREE.TorusGeometry(.045, .015, 6, 12, Math.PI), fur, [.34, .23, .42]);
+  stitch.rotation.z = Math.PI;
+  const scarf = pivot(body, 0, 1.5, -.1);
+  const arms = [], legs = [];
+  for (const side of [-1, 1]) {
+    const arm = pivot(body, side * .32, 1.34, 0);
+    arm.rotation.z = side * .2;
+    mesh(arm, new THREE.CapsuleGeometry(.12, .16, 4, 8), blue, [0, -.13, 0]);
+    const elbow = pivot(arm, 0, -.25, 0);
+    mesh(elbow, new THREE.CapsuleGeometry(.11, .13, 4, 8), fur, [0, -.12, 0]);
+    mesh(elbow, new THREE.CylinderGeometry(.125, .125, .07, 12), pink, [0, -.02, 0]);
+    ball(elbow, fur, [0, -.24, .01], [.125, .13, .11]);
+    arms.push({ arm, elbow });
+    const hip = pivot(body, side * .17, .7, 0);
+    mesh(hip, new THREE.CapsuleGeometry(.115, .16, 4, 8), fur, [0, -.13, 0]);
+    const knee = pivot(hip, 0, -.27, 0);
+    mesh(knee, new THREE.CapsuleGeometry(.11, .14, 4, 8), fur, [0, -.13, 0]);
+    ball(knee, fur, [0, -.27, .07], [.15, .13, .22]);
+    legs.push({ hip, knee });
+  }
+  root.rotation.y = Math.PI / 2;
+  return { root, body, head, scarf, arms, legs, ears, skirt, profile };
+}
+
 function createCharacter(profile) {
+  if (profile.model === 'ive-long-ear') return createIveCharacter(profile);
   const root = new THREE.Group();
   const body = pivot(root, 0, 0, 0);
   const skin = material(profile.skin);
@@ -177,6 +269,13 @@ function poseCharacter(character, time) {
   character.legs[0].knee.rotation.x = pose.leftKnee;
   character.legs[1].knee.rotation.x = pose.rightKnee;
   character.scarf.rotation.x = pose.scarf;
+  if (character.ears) {
+    character.ears.forEach((ear, index) => {
+      ear.rotation.z = (index === 0 ? -1 : 1) * (.04 + pose.sway * 2);
+      ear.rotation.x = pose.scarf * .6;
+    });
+    character.skirt.rotation.z = pose.sway * .65;
+  }
 }
 
 export class Race3D {
