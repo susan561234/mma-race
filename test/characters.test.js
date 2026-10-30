@@ -39,11 +39,15 @@ test('IVE uses the supplied-reference long-ear mascot consistently across artist
   const album = characterProfile(seedCategories[1].nominees[4]);
   const song = characterProfile(seedCategories[2].nominees[0]);
   assert.equal(artist.model, 'ive-long-ear');
+  assert.equal(artist.characterName, 'CHERRY');
+  assert.equal(artist.name, 'IVE (아이브)');
   assert.equal(artist.accessory, 'beret');
   assert.equal(artist.color, '#467bc3');
   assert.deepEqual(artist, album);
   assert.deepEqual(artist, song);
   assert.equal(characterProfile({ content: { name: 'IVE' } }).model, 'ive-long-ear');
+  assert.equal(characterProfile({ content: { name: 'IVE' } }).characterName, 'CHERRY');
+  assert.equal(characterProfile(seedCategories[0].nominees[0]).characterName, 'PLAVE');
   assert.equal(characterProfile(seedCategories[0].nominees[0]).model, 'human');
 });
 

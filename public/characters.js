@@ -36,6 +36,7 @@ export function characterProfile(nominee) {
   const design = isIve ? known.get('IVE (아이브)') : specific;
   return {
     name, seed,
+    characterName: isIve ? 'CHERRY' : name,
     model: isIve ? 'ive-long-ear' : 'human',
     color: design?.color ?? `hsl(${seed % 360}, 72%, 69%)`,
     hair: design?.hair ?? ['#302a40', '#855e42', '#d8b87c', '#527b8b', '#80567d'][seed % 5],

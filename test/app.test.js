@@ -188,7 +188,7 @@ test('HTTP API labels provided snapshots honestly, serves persisted live data, a
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
     assert.match(await response.text(), /MMA RACE/);
-    for (const asset of ['/app.js', '/chart.js', '/style.css', '/favicon.svg', '/characters.js', '/race3d.js', '/race3d.css', '/vendor/three.module.js', '/vendor/three.core.js']) {
+    for (const asset of ['/app.js', '/chart.js', '/style.css', '/favicon.svg', '/characters.js', '/categories.js', '/race3d.js', '/race3d.css', '/vendor/three.module.js', '/vendor/three.core.js']) {
       assert.equal((await fetch(`${base}${asset}`)).status, 200);
     }
     assert.equal((await fetch(`${base}/seed.js`)).status, 404);
