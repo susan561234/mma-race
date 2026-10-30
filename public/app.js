@@ -190,7 +190,7 @@ function renderCastCards() {
   const focused = list.find(item => item.content.id === state.focusId);
   $('#race-commentary').textContent = focused
     ? `${characterProfile(focused).name} / ${characterProfile(focused).title}`
-    : `${characterProfile(list[0]).name} 目前領跑 · 原創應援代表競速中`;
+    : `${characterProfile(list[0]).name} 目前領跑 · 應援代表競速中`;
   $('#camera-overview').setAttribute('aria-pressed', String(!state.focusId));
   $('#cast-page').textContent = `${state.castPage + 1} / ${Math.ceil(list.length / 5)}`;
   $('#cast-prev').disabled = state.castPage === 0;

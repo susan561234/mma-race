@@ -1,11 +1,11 @@
-// These palettes and mascots are original designs, not official fan colors.
+// IVE follows the user-supplied reference; other palettes are original, not official fan colors.
 const designs = [
   ['PLAVE', '#9d8bff', '#d2f4ff', 'headphones', '星際領航員'],
   ['NCT WISH', '#b5f36d', '#def8b3', 'cap', '幸運追風手'],
   ['방탄소년단', '#b38af6', '#29253d', 'headband', '紫夜疾風'],
   ['Hearts2Hearts (하츠투하츠)', '#ff8cb4', '#583655', 'heart', '心動快遞員'],
   ['CORTIS (코르티스)', '#70d7e3', '#183a45', 'goggles', '藍焰先鋒'],
-  ['IVE (아이브)', '#f4c778', '#4b2a46', 'crown', '星冠挑戰者'],
+  ['IVE (아이브)', '#467bc3', '#fffdf5', 'beret', '藍帽長耳應援代表'],
   ['AKMU (악뮤)', '#87d3a3', '#563e2d', 'cap', '森林旅人'],
   ['아이오아이 (I.O.I)', '#ff9c88', '#6b3f42', 'bow', '日落飛行員'],
   ['아일릿(ILLIT)', '#b6c8ff', '#4c4a86', 'cat', '雲朵跳躍者'],
@@ -32,12 +32,15 @@ export function characterProfile(nominee) {
   const name = (nominee.content.artistName || nominee.content.name).normalize('NFKC').trim();
   const seed = hashName(name);
   const specific = known.get(name);
+  const isIve = name === 'IVE (아이브)' || name === 'IVE';
+  const design = isIve ? known.get('IVE (아이브)') : specific;
   return {
     name, seed,
-    color: specific?.color ?? `hsl(${seed % 360}, 72%, 69%)`,
-    hair: specific?.hair ?? ['#302a40', '#855e42', '#d8b87c', '#527b8b', '#80567d'][seed % 5],
-    accessory: specific?.accessory ?? accessories[seed % accessories.length],
-    title: specific?.title ?? ['星光追風手', '夢想領航員', '應援衝刺手', '舞台冒險家'][seed % 4],
+    model: isIve ? 'ive-long-ear' : 'human',
+    color: design?.color ?? `hsl(${seed % 360}, 72%, 69%)`,
+    hair: design?.hair ?? ['#302a40', '#855e42', '#d8b87c', '#527b8b', '#80567d'][seed % 5],
+    accessory: design?.accessory ?? accessories[seed % accessories.length],
+    title: design?.title ?? ['星光追風手', '夢想領航員', '應援衝刺手', '舞台冒險家'][seed % 4],
     skin: skins[(seed >>> 4) % skins.length],
     hairStyle: (seed >>> 8) % 3
   };
