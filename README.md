@@ -79,3 +79,7 @@ docker run -d --name mma-race --restart unless-stopped \
 - `GET /api/history?category=V26002&range=24h`：真實樣本；範圍支援 `1h`、`6h`、`24h`、`7d`。
 
 本專案無登入及寫入型公共 API，所有訪客只能讀取資料。非 Melon / MMA 官方服務，投票排名不代表最終得獎結果。
+
+---
+
+hello
