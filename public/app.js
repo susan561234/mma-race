@@ -1,12 +1,12 @@
 import { makeSeries, chartGeometry, toCsv } from './chart.js';
 import { characterProfile } from './characters.js';
+import { categoryName } from './categories.js';
 import { dashboard as fetchDashboard, history as fetchHistory } from './data-client.js';
 
 const $ = selector => document.querySelector(selector);
 const number = new Intl.NumberFormat('zh-TW');
 const time = value => new Date(value).toLocaleString('zh-TW', { hour12: false });
 const shortTime = value => new Date(value).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
-const types = { artist: '藝人投票', album: '專輯投票', song: '歌曲投票' };
 const pages = document.querySelector('meta[name="data-mode"]').content === 'pages';
 const state = {
   dashboard: null, categoryId: new URLSearchParams(location.search).get('category'),
@@ -92,7 +92,7 @@ function renderCategories() {
     const button = node('button', 'category-button');
     button.type = 'button';
     button.setAttribute('aria-pressed', String(item.categoryId === state.categoryId));
-    button.append(node('strong', '', types[item.nomineeType]), node('small', '', `${item.categoryId} / ${item.nominees.length} 位候選`));
+    button.append(node('strong', '', categoryName(item.categoryId)), node('small', '', `${item.categoryId} / ${item.nominees.length} 位候選`));
     button.addEventListener('click', () => switchCategory(item.categoryId));
     return button;
   }));
@@ -107,7 +107,8 @@ function renderStats() {
   $('#leader-share').textContent = `官方得票率 ${leader.votePercent}% · ${number.format(leader.voteCount)} 票`;
   $('#lead-gap').textContent = list.length > 1 ? `${number.format(leader.voteCount - list[1].voteCount)} 票` : '—';
   $('#last-update').textContent = state.dashboard.capturedAt ? `成功收集 ${shortTime(state.dashboard.capturedAt)}` : '快照無原始觀測時間';
-  $('#race-category').textContent = category().categoryId;
+  $('#race-category').textContent = categoryName(state.categoryId);
+  $('#race-category').title = state.categoryId;
   $('#nominee-count').textContent = `${list.length} 位候選`;
   renderClock();
 }

@@ -34,6 +34,8 @@ test('Pages collection persists real samples, preserves failures, and builds sub
     const html = readFileSync(join(output, 'index.html'), 'utf8');
     assert.match(html, /name="data-mode" content="pages"/);
     assert.doesNotMatch(html, /(?:src|href)="\/(?!\/)/);
+    assert.match(readFileSync(join(output, 'categories.js'), 'utf8'), /年度藝人/);
+    assert.match(readFileSync(join(output, 'app.js'), 'utf8'), /from '\.\/categories.js'/);
     assert.match(readFileSync(join(output, 'race3d.js'), 'utf8'), /from '\.\/vendor\/three.module.js'/);
     assert.ok(readFileSync(join(output, 'vendor/three.core.js')).length > 1000);
     assert.ok(readFileSync(join(output, 'vendor/THREE-LICENSE.txt')).length > 100);
