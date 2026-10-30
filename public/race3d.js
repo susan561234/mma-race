@@ -47,6 +47,67 @@ function disposeTree(root) {
   textures.forEach(item => item.dispose());
 }
 
+function createLongEarGeometry() {
+  const geometry = new THREE.SphereGeometry(1, 32, 32);
+  const positions = geometry.attributes.position;
+  for (let index = 0; index < positions.count; index++) {
+    const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
+    const t = (1 - y) / 2;
+    // Closed, rounded cross-sections taper at the root and swell toward the lower ear.
+    positions.setXYZ(index, .3 * t + x * (.13 + .2 * t), -1.38 * t, z * (.13 + .1 * t));
+  }
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  return geometry;
+}
+
+function createIveEye(parent, side, ink, whiteSurface) {
+  const eye = pivot(parent, side * .22, -.055, .414);
+  eye.name = 'ive-eye';
+  eye.rotation.y = side * .28;
+  ball(eye, ink, [0, 0, 0], [.117, .123, .03]);
+  ball(eye, whiteSurface, [side * .085, -.028, .023], [.022, .049, .008]);
+  ball(eye, material('#3a4039', .95), [0, -.025, .029], [.08, .078, .015]);
+  ball(eye, ink, [0, .014, .042], [.081, .085, .012]);
+  const highlight = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  ball(eye, highlight, [-.026, .043, .057], [.026, .03, .008]);
+  ball(eye, highlight, [.025, -.035, .053], [.014, .016, .008]);
+  const eyelid = new THREE.CubicBezierCurve3(
+    new THREE.Vector3(-.115, .01, .025), new THREE.Vector3(-.12, .15, .035),
+    new THREE.Vector3(.11, .16, .035), new THREE.Vector3(.116, .008, .025)
+  );
+  mesh(eye, new THREE.TubeGeometry(eyelid, 20, .013, 8, false), ink);
+  for (let index = 0; index < 2; index++) {
+    const lash = new THREE.CubicBezierCurve3(
+      new THREE.Vector3(side * (.075 + index * .025), .09 - index * .02, .032),
+      new THREE.Vector3(side * (.105 + index * .025), .135 - index * .02, .034),
+      new THREE.Vector3(side * (.13 + index * .025), .135 - index * .03, .034),
+      new THREE.Vector3(side * (.145 + index * .025), .105 - index * .04, .032)
+    );
+    mesh(eye, new THREE.TubeGeometry(lash, 12, .009, 6, false), ink);
+  }
+}
+
+function createIveSkirtGeometry() {
+  const geometry = new THREE.CylinderGeometry(.3, .43, .26, 96, 6);
+  const positions = geometry.attributes.position;
+  for (let index = 0; index < positions.count; index++) {
+    const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
+    const radius = Math.hypot(x, z);
+    if (radius < .001) continue;
+    const angle = Math.atan2(z, x);
+    const flare = (.13 - y) / .26;
+    const fold = Math.cos(angle * 10) * .017 * flare;
+    const hem = .006 * Math.cos(angle * 10) * flare ** 4;
+    positions.setXYZ(index, x * (radius + fold) / radius, y + hem, z * (radius + fold) / radius);
+  }
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  return geometry;
+}
+
 function createIveCharacter(profile) {
   const root = new THREE.Group();
   const body = pivot(root, 0, 0, 0);
@@ -54,7 +115,7 @@ function createIveCharacter(profile) {
   const blue = material('#315eaa');
   const piping = material('#203b65');
   const pink = material('#f3a5be');
-  const black = material('#17222c', .25);
+  const black = material('#17211c', .8);
   const light = material('#ffffff', .35);
   const torso = ball(body, blue, [0, 1.18, 0], [.35, .37, .255]);
   torso.rotation.x = -.08;
@@ -68,34 +129,18 @@ function createIveCharacter(profile) {
   ball(body, fur, [0, 1.43, .3], [.04, .045, .025]);
   for (let index = 0; index < 3; index++) ball(body, fur, [0, 1.24 - index * .12, .262], [.027, .027, .025]);
   const skirt = pivot(body, 0, .86, 0);
-  mesh(skirt, new THREE.CylinderGeometry(.28, .43, .28, 24), pink, [0, 0, 0]);
-  for (let index = 0; index < 12; index++) {
-    const angle = index * Math.PI / 6;
-    const pleat = mesh(skirt, new THREE.CapsuleGeometry(.026, .18, 3, 5), pink,
-      [Math.cos(angle) * .385, -.045, Math.sin(angle) * .385]);
-    pleat.rotation.z = -Math.cos(angle) * .36;
-    pleat.rotation.x = Math.sin(angle) * .36;
-  }
+  skirt.name = 'ive-skirt';
+  mesh(skirt, createIveSkirtGeometry(), pink);
   const head = pivot(body, 0, 1.98, 0);
   ball(head, fur, [0, 0, 0], [.59, .54, .45]);
   const ears = [];
   for (const side of [-1, 1]) {
     const ear = pivot(head, side * .47, .2, -.09);
-    const shape = new THREE.Shape();
-    shape.moveTo(0, 0);
-    shape.bezierCurveTo(.12, -.18, .42, -.62, .48, -.98);
-    shape.bezierCurveTo(.56, -1.35, .03, -1.52, -.1, -1.12);
-    shape.bezierCurveTo(-.15, -.8, -.14, -.25, 0, 0);
-    mesh(ear, new THREE.ExtrudeGeometry(shape, { depth: .12, bevelEnabled: true, bevelSize: .055, bevelThickness: .06, bevelSegments: 3, steps: 1, curveSegments: 12 }), fur);
+    ear.name = 'ive-long-ear';
+    mesh(ear, createLongEarGeometry(), fur);
     ear.scale.x = side;
     ears.push(ear);
-    ball(head, black, [side * .22, -.035, .427], [.106, .14, .035]);
-    ball(head, light, [side * .21, .015, .46], [.04, .046, .016]);
-    ball(head, light, [side * .235, -.085, .46], [.021, .021, .012]);
-    for (let index = 0; index < 2; index++) {
-      const lash = box(head, black, [side * (.28 + index * .04), .07 - index * .03, .42], [.027, .095, .022]);
-      lash.rotation.z = side * -.65;
-    }
+    createIveEye(head, side, black, light);
     ball(head, pink, [side * .37, -.19, .375], [.1, .055, .025]);
   }
   ball(head, black, [0, -.19, .45], [.035, .022, .02]);
