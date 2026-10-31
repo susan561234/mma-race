@@ -13,6 +13,7 @@ const assets = new Map([
   ['/chart.js', ['chart.js', 'text/javascript; charset=utf-8']],
   ['/race3d.js', ['race3d.js', 'text/javascript; charset=utf-8']],
   ['/characters.js', ['characters.js', 'text/javascript; charset=utf-8']],
+  ['/categories.js', ['categories.js', 'text/javascript; charset=utf-8']],
   ['/data-client.js', ['data-client.js', 'text/javascript; charset=utf-8']],
   ['/race3d.css', ['race3d.css', 'text/css; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
