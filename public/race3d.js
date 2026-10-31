@@ -54,7 +54,7 @@ function createLongEarGeometry() {
     const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
     const t = (1 - y) / 2;
     // Closed, rounded cross-sections taper at the root and swell toward the lower ear.
-    positions.setXYZ(index, .3 * t + x * (.13 + .2 * t), -1.38 * t, z * (.13 + .1 * t));
+    positions.setXYZ(index, .3 * t + x * (.13 + .2 * t), -1.5 * t, z * (.13 + .1 * t));
   }
   positions.needsUpdate = true;
   geometry.computeVertexNormals();
@@ -78,15 +78,13 @@ function createIveEye(parent, side, ink, whiteSurface) {
     new THREE.Vector3(.11, .16, .035), new THREE.Vector3(.116, .008, .025)
   );
   mesh(eye, new THREE.TubeGeometry(eyelid, 20, .013, 8, false), ink);
-  for (let index = 0; index < 2; index++) {
-    const lash = new THREE.CubicBezierCurve3(
-      new THREE.Vector3(side * (.075 + index * .025), .09 - index * .02, .032),
-      new THREE.Vector3(side * (.105 + index * .025), .135 - index * .02, .034),
-      new THREE.Vector3(side * (.13 + index * .025), .135 - index * .03, .034),
-      new THREE.Vector3(side * (.145 + index * .025), .105 - index * .04, .032)
-    );
-    mesh(eye, new THREE.TubeGeometry(lash, 12, .009, 6, false), ink);
-  }
+  const lash = new THREE.CubicBezierCurve3(
+    new THREE.Vector3(side * .095, .08, .032),
+    new THREE.Vector3(side * .115, .12, .034),
+    new THREE.Vector3(side * .135, .12, .034),
+    new THREE.Vector3(side * .15, .12, .032)
+  );
+  mesh(eye, new THREE.TubeGeometry(lash, 12, .01, 6, false), ink).name = 'ive-outer-eyelash';
 }
 
 function createIveSkirtGeometry() {
@@ -131,11 +129,12 @@ function createIveCharacter(profile) {
   const skirt = pivot(body, 0, .86, 0);
   skirt.name = 'ive-skirt';
   mesh(skirt, createIveSkirtGeometry(), pink);
-  const head = pivot(body, 0, 1.98, 0);
+  const head = pivot(body, 0, 2.08, 0);
+  head.scale.set(1.18, 1.14, 1.14);
   ball(head, fur, [0, 0, 0], [.59, .54, .45]);
   const ears = [];
   for (const side of [-1, 1]) {
-    const ear = pivot(head, side * .47, .2, -.09);
+    const ear = pivot(head, side * .4, .44, -.09);
     ear.name = 'ive-long-ear';
     mesh(ear, createLongEarGeometry(), fur);
     ear.scale.x = side;
