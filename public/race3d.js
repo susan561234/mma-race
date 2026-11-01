@@ -3,6 +3,12 @@ import { characterProfile, runningPose, trackPosition } from './characters.js';
 
 const number = new Intl.NumberFormat('zh-TW');
 const white = '#f4f4ed';
+const iveFaceSide = [
+  [[0, .53], [.24, .53], [.4, .49], [.5, .39]],
+  [[.5, .39], [.65, .3], [.59, .09], [.59, -.13]],
+  [[.59, -.13], [.59, -.22], [.642, -.32], [.5, -.4]],
+  [[.5, -.4], [.37, -.457], [.19, -.47], [0, -.47]],
+].map(points => new THREE.CubicBezierCurve(...points.map(([x, y]) => new THREE.Vector2(x, y))));
 
 function material(color, roughness = .62) {
   return new THREE.MeshStandardMaterial({ color, roughness });
@@ -47,14 +53,48 @@ function disposeTree(root) {
   textures.forEach(item => item.dispose());
 }
 
-function createLongEarGeometry() {
-  const geometry = new THREE.SphereGeometry(1, 32, 32);
+function iveFaceWidth(y) {
+  const curve = iveFaceSide.find(segment => y <= segment.v0.y && y >= segment.v3.y);
+  if (!curve) throw new RangeError('CHERRY face coordinate is outside the head surface');
+  let low = 0, high = 1;
+  const point = new THREE.Vector2();
+  for (let index = 0; index < 20; index++) {
+    const t = (low + high) / 2;
+    curve.getPoint(t, point);
+    if (point.y > y) low = t;
+    else high = t;
+  }
+  return curve.getPoint((low + high) / 2, point).x;
+}
+
+function iveFaceDepth(x, y) {
+  const width = iveFaceWidth(y);
+  return .45 * Math.sqrt(1 - ((y - .03) / .5) ** 2) * Math.sqrt(1 - (x / width) ** 2);
+}
+
+function createIveHeadGeometry() {
+  const geometry = new THREE.SphereGeometry(1, 64, 64);
+  const positions = geometry.attributes.position;
+  for (let index = 0; index < positions.count; index++) {
+    const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
+    const height = y * .5 + .03;
+    const radius = Math.sqrt(1 - y * y);
+    // Mirror one subtle side contour: a long upper arc and a much shorter cheek.
+    positions.setXYZ(index, radius > 0 ? x / radius * iveFaceWidth(height) : 0, height, z * .45);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createLongEarGeometry(front) {
+  const geometry = new THREE.SphereGeometry(1, 48, 48, front ? 0 : Math.PI, Math.PI);
   const positions = geometry.attributes.position;
   for (let index = 0; index < positions.count; index++) {
     const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
     const t = (1 - y) / 2;
-    // Closed, rounded cross-sections taper at the root and swell toward the lower ear.
-    positions.setXYZ(index, .3 * t + x * (.13 + .2 * t), -1.5 * t, z * (.13 + .1 * t));
+    // The broad lower ear fans outward, then turns inward behind the hands.
+    positions.setXYZ(index, .4 * Math.sin(Math.PI * t) + x * (.12 + .35 * t),
+      -1.55 * t, z * (.14 + .12 * t) - .08 * t);
   }
   positions.needsUpdate = true;
   geometry.computeVertexNormals();
@@ -62,29 +102,63 @@ function createLongEarGeometry() {
   return geometry;
 }
 
-function createIveEye(parent, side, ink, whiteSurface) {
-  const eye = pivot(parent, side * .22, -.055, .414);
-  eye.name = 'ive-eye';
-  eye.rotation.y = side * .28;
-  ball(eye, ink, [0, 0, 0], [.117, .123, .03]);
-  ball(eye, whiteSurface, [side * .085, -.028, .023], [.022, .049, .008]);
-  ball(eye, material('#3a4039', .95), [0, -.025, .029], [.08, .078, .015]);
-  ball(eye, ink, [0, .014, .042], [.081, .085, .012]);
-  const highlight = new THREE.MeshBasicMaterial({ color: '#ffffff' });
-  ball(eye, highlight, [-.026, .043, .057], [.026, .03, .008]);
-  ball(eye, highlight, [.025, -.035, .053], [.014, .016, .008]);
-  const eyelid = new THREE.CubicBezierCurve3(
-    new THREE.Vector3(-.115, .01, .025), new THREE.Vector3(-.12, .15, .035),
-    new THREE.Vector3(.11, .16, .035), new THREE.Vector3(.116, .008, .025)
-  );
-  mesh(eye, new THREE.TubeGeometry(eyelid, 20, .013, 8, false), ink);
-  const lash = new THREE.CubicBezierCurve3(
-    new THREE.Vector3(side * .095, .08, .032),
-    new THREE.Vector3(side * .115, .12, .034),
-    new THREE.Vector3(side * .135, .12, .034),
-    new THREE.Vector3(side * .15, .12, .032)
-  );
-  mesh(eye, new THREE.TubeGeometry(lash, 12, .01, 6, false), ink).name = 'ive-outer-eyelash';
+function createIveFaceShape(head, name, shape, surface) {
+  const points = shape.getPoints(24);
+  if (THREE.ShapeUtils.isClockWise(points)) points.reverse();
+  const center = points.reduce((sum, point) => sum.add(point), new THREE.Vector2()).divideScalar(points.length);
+  const positions = [], indices = [];
+  // Radial subdivisions keep the filled graphic flush with the curved face.
+  for (let ring = 0; ring <= 10; ring++) {
+    for (const point of points) {
+      const x = THREE.MathUtils.lerp(center.x, point.x, ring / 10);
+      const y = THREE.MathUtils.lerp(center.y, point.y, ring / 10);
+      positions.push(x, y, iveFaceDepth(x, y) + .004);
+    }
+  }
+  for (let ring = 0; ring < 10; ring++) {
+    for (let index = 0; index < points.length - 1; index++) {
+      const a = ring * points.length + index, b = a + points.length;
+      indices.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  const object = mesh(head, geometry, surface);
+  object.name = name;
+  object.castShadow = false;
+  object.receiveShadow = false;
+  return object;
+}
+
+function createIveFaceCurve(head, name, points, ink, radius = .008) {
+  const curve = new THREE.CubicBezierCurve(...points.map(([x, y]) => new THREE.Vector2(x, y)));
+  const path = new THREE.CatmullRomCurve3(curve.getPoints(32).map(point =>
+    new THREE.Vector3(point.x, point.y, iveFaceDepth(point.x, point.y) + .009)));
+  const object = mesh(head, new THREE.TubeGeometry(path, 40, radius, 8, false), ink);
+  object.name = name;
+  object.castShadow = false;
+  object.receiveShadow = false;
+}
+
+function createIveEye(head, side, ink) {
+  const x = side * .24, y = -.125;
+  const eye = new THREE.Shape();
+  eye.absellipse(x, y, .118, .122, 0, Math.PI * 2, false, 0);
+  createIveFaceShape(head, 'ive-eye', eye, ink);
+  createIveFaceMark(head, 'ive-eye-highlight', x - side * .015, y + .045, .03, .033, '#ffffff', 1, .85, .011);
+  createIveFaceMark(head, 'ive-eye-secondary-highlight', x + side * .008, y - .05, .021, .023, '#ffffff', 1, .85, .011);
+  createIveFaceCurve(head, 'ive-upper-eyelid',
+    [[x - .115, y + .015], [x - .12, y + .155], [x + .11, y + .158], [x + .118, y + .012]], ink);
+  createIveFaceCurve(head, 'ive-outer-eye-arc',
+    [[x + side * .095, y + .085], [x + side * .169, y + .082],
+      [x + side * .175, y - .075], [x + side * .14, y - .12]], ink);
+  const corner = new THREE.Shape();
+  corner.moveTo(x + side * .091, y + .08);
+  corner.quadraticCurveTo(x + side * .13, y + .096, x + side * .157, y + .125);
+  corner.quadraticCurveTo(x + side * .153, y + .086, x + side * .117, y + .058);
+  corner.closePath();
+  createIveFaceShape(head, 'ive-outer-eye-corner', corner, ink);
 }
 
 function createIveSkirtGeometry() {
@@ -106,15 +180,40 @@ function createIveSkirtGeometry() {
   return geometry;
 }
 
+function createIveFaceMark(head, name, x, y, width, height, color, opacity, fadeStart, offset = .003) {
+  const geometry = new THREE.RingGeometry(0, 1, 48, 12);
+  const positions = geometry.attributes.position;
+  const colors = [];
+  for (let index = 0; index < positions.count; index++) {
+    const u = positions.getX(index), v = positions.getY(index);
+    const px = x + u * width, py = y + v * height;
+    // Follow the curved face so cheek details never look like raised accessories.
+    const pz = iveFaceDepth(px, py) + offset;
+    positions.setXYZ(index, px, py, pz);
+    colors.push(1, 1, 1, 1 - THREE.MathUtils.smoothstep(Math.hypot(u, v), fadeStart, 1));
+  }
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
+  geometry.computeVertexNormals();
+  const surface = new THREE.MeshBasicMaterial({ color });
+  surface.vertexColors = true;
+  surface.transparent = true;
+  surface.opacity = opacity;
+  surface.depthWrite = false;
+  const mark = mesh(head, geometry, surface);
+  mark.name = name;
+  mark.castShadow = false;
+  mark.receiveShadow = false;
+  return mark;
+}
+
 function createIveCharacter(profile) {
   const root = new THREE.Group();
   const body = pivot(root, 0, 0, 0);
-  const fur = material('#fffdf5', .85);
+  const fur = material('#ffffff', .9);
   const blue = material('#315eaa');
   const piping = material('#203b65');
   const pink = material('#f3a5be');
-  const black = material('#17211c', .8);
-  const light = material('#ffffff', .35);
+  const black = new THREE.MeshBasicMaterial({ color: '#111314' });
   const torso = ball(body, blue, [0, 1.18, 0], [.35, .37, .255]);
   torso.rotation.x = -.08;
   const shirt = mesh(body, new THREE.ConeGeometry(.15, .29, 3), fur, [0, 1.3, .252], [1, 1, .16]);
@@ -131,35 +230,48 @@ function createIveCharacter(profile) {
   mesh(skirt, createIveSkirtGeometry(), pink);
   const head = pivot(body, 0, 2.08, 0);
   head.scale.set(1.18, 1.14, 1.14);
-  ball(head, fur, [0, 0, 0], [.59, .54, .45]);
+  const face = mesh(head, createIveHeadGeometry(), fur);
+  face.name = 'ive-face';
   const ears = [];
   for (const side of [-1, 1]) {
-    const ear = pivot(head, side * .4, .44, -.09);
+    const ear = pivot(head, side * .44, .37, -.2);
     ear.name = 'ive-long-ear';
-    mesh(ear, createLongEarGeometry(), fur);
+    for (const front of [true, false]) {
+      const panel = mesh(ear, createLongEarGeometry(front), fur);
+      panel.name = front ? 'ive-ear-front' : 'ive-ear-back';
+    }
     ear.scale.x = side;
     ears.push(ear);
-    createIveEye(head, side, black, light);
-    ball(head, pink, [side * .37, -.19, .375], [.1, .055, .025]);
+    createIveEye(head, side, black);
+    createIveFaceMark(head, 'ive-blush', side * .445, -.31, .09, .095, '#f2b0c9', .65, .6);
   }
-  ball(head, black, [0, -.19, .45], [.035, .022, .02]);
+  // Left and right refer to the viewer looking straight at CHERRY.
+  createIveFaceMark(head, 'ive-left-cheek-dot', -.448, -.29, .008, .008, '#343638', 1, .7, .006);
+  createIveFaceMark(head, 'ive-right-cheek-dot', .35, -.373, .0075, .0075, '#343638', 1, .7, .006);
+  createIveFaceMark(head, 'ive-nose', 0, -.29, .028, .016, '#111314', 1, .85);
   for (const side of [-1, 1]) {
-    const mouth = mesh(head, new THREE.TorusGeometry(.065, .014, 6, 14, Math.PI), black, [side * .061, -.22, .437]);
-    mouth.rotation.z = Math.PI;
+    createIveFaceCurve(head, 'ive-mouth',
+      [[side * .12, -.34], [side * .12, -.405], [side * .035, -.408], [0, -.365]], black);
   }
-  const curl = mesh(head, new THREE.TorusGeometry(.105, .02, 6, 18, Math.PI * 1.05), black, [-.045, .27, .395]);
-  curl.rotation.z = Math.PI;
-  const curlTip = mesh(head, new THREE.TorusGeometry(.065, .018, 6, 14, Math.PI * .9), black, [.095, .25, .41]);
-  curlTip.rotation.z = Math.PI;
+  createIveFaceCurve(head, 'ive-forelock',
+    [[-.065, .27], [-.09, .11], [-.032, .105], [.012, .165]], black, .009);
+  createIveFaceCurve(head, 'ive-forelock',
+    [[.012, .25], [-.015, .155], [.042, .12], [.084, .178]], black, .009);
   const hat = pivot(head, 0, .42, -.025);
   hat.rotation.z = -.1;
   ball(hat, blue, [0, .085, 0], [.65, .28, .51]);
   mesh(hat, new THREE.TorusGeometry(.54, .037, 8, 32), piping, [0, -.025, 0], [1, .86, 1]).rotation.x = Math.PI / 2;
   ball(hat, piping, [0, .37, 0], [.055, .055, .05]);
-  // Small white stitched emblem on the beret, matching the reference's placement.
-  for (const side of [-1, 1]) ball(hat, fur, [.34 + side * .025, .13, .446], [.03, .033, .018]);
-  const stitch = mesh(hat, new THREE.TorusGeometry(.045, .015, 6, 12, Math.PI), fur, [.34, .23, .42]);
-  stitch.rotation.z = Math.PI;
+  for (const side of [-1, 1]) {
+    const x = .35 + side * .035;
+    ball(hat, fur, [x, .13, .449], [.041, .04, .018]);
+    const leaf = ball(hat, fur, [x, .235, .43], [.04, .018, .012]);
+    leaf.rotation.z = side * .45;
+    const stem = new THREE.CubicBezierCurve3(
+      new THREE.Vector3(.35, .225, .435), new THREE.Vector3(.35, .2, .447),
+      new THREE.Vector3(x, .195, .451), new THREE.Vector3(x, .16, .451));
+    mesh(hat, new THREE.TubeGeometry(stem, 12, .007, 6, false), fur);
+  }
   const scarf = pivot(body, 0, 1.5, -.1);
   const arms = [], legs = [];
   for (const side of [-1, 1]) {
