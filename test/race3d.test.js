@@ -111,15 +111,37 @@ test('CHERRY follows the stylized face, eye, cheek and long-ear reference', asyn
     const cheek = sideContour.filter(point => point.y < -.16 && point.y > -.34);
     const upperWidth = Math.max(...upper.map(point => point.x));
     const cheekWidth = Math.max(...cheek.map(point => point.x));
-    assert.ok(upperWidth > transition.x && upperWidth - transition.x < .025);
-    assert.ok(cheekWidth > transition.x && cheekWidth - transition.x < .015,
-      'the lower cheek bulge and inward transition stay extremely subtle');
+    assert.ok(upperWidth >= transition.x && upperWidth - transition.x < .025);
+    assert.ok(cheekWidth <= transition.x && transition.x - cheekWidth < .015,
+      'the short cheek arc stays subtle without narrowing and expanding into a groove');
     for (const point of sideContour) {
       const mirrored = [...facePositions.array].some((value, index) =>
         index % 3 === 0 && Math.abs(value + point.x) < 1e-6 &&
         Math.abs(facePositions.array[index + 1] - point.y) < 1e-6 &&
         Math.abs(facePositions.array[index + 2]) < 1e-6);
       assert.ok(mirrored, 'the side contours are symmetrical');
+    }
+    const faceNormals = face.geometry.attributes.normal;
+    const rows = [];
+    for (let row = 1; row < 64; row++) {
+      const start = row * 65, end = start + 64;
+      const points = Array.from({ length: 65 }, (_, column) => new Vector3().fromBufferAttribute(facePositions, start + column));
+      const y = points[0].y;
+      const depth = Math.max(...points.map(point => point.z));
+      rows.push({ y, points });
+      if (y > -.34 && y < .3) assert.ok(depth > .42, 'the side remains full from forehead to lower cheek');
+      const firstNormal = new Vector3().fromBufferAttribute(faceNormals, start);
+      const lastNormal = new Vector3().fromBufferAttribute(faceNormals, end);
+      assert.ok(firstNormal.distanceTo(lastNormal) < 1e-6, 'the head UV seam cannot create a shaded crease');
+    }
+    for (const angle of [Math.PI / 4, Math.PI / 3, Math.PI / 2]) {
+      const profile = rows.map(row => Math.max(...row.points.map(point => point.x * Math.cos(angle) + point.z * Math.sin(angle))));
+      for (let index = 4; index < rows.length - 4; index++) {
+        const before = index - 4, after = index + 4;
+        const t = (rows[index].y - rows[before].y) / (rows[after].y - rows[before].y);
+        const chord = profile[before] * (1 - t) + profile[after] * t;
+        assert.ok(profile[index] >= chord - .001, 'side and oblique silhouettes must not dip inward');
+      }
     }
     for (let index = 0; index < 2; index++) {
       const eye = eyes[index], highlight = highlights[index];
@@ -159,12 +181,16 @@ test('CHERRY follows the stylized face, eye, cheek and long-ear reference', asyn
       assert.ok(ear.position.z + box.max.z < .03, 'ear surfaces stay behind face and hands');
       const frontPositions = front.geometry.attributes.position;
       const backPositions = back.geometry.attributes.position;
+      const frontNormals = front.geometry.attributes.normal;
+      const backNormals = back.geometry.attributes.normal;
       for (let row = 0; row <= 48; row++) {
         for (const edge of [0, 48]) {
           const a = row * 49 + edge, b = row * 49 + 48 - edge;
           for (const axis of ['getX', 'getY', 'getZ']) {
             assert.ok(Math.abs(frontPositions[axis](a) - backPositions[axis](b)) < 1e-6,
               'front and back panels meet along the same edge without a gap');
+            assert.ok(Math.abs(frontNormals[axis](a) - backNormals[axis](b)) < 1e-6,
+              'ear panels share smooth normals rather than a concave-looking seam');
           }
         }
       }
@@ -176,6 +202,12 @@ test('CHERRY follows the stylized face, eye, cheek and long-ear reference', asyn
       assert.ok(!object.name.includes('outline'), 'no black outline shells remain');
       if (!object.geometry) return;
       for (const value of object.geometry.attributes.position.array) assert.ok(Number.isFinite(value));
+      if (object.name === 'ive-face' || object.name.startsWith('ive-ear-')) {
+        const normals = object.geometry.attributes.normal;
+        for (let index = 0; index < normals.count; index++) {
+          assert.ok(Math.abs(new Vector3().fromBufferAttribute(normals, index).length() - 1) < 1e-6);
+        }
+      }
     });
     assert.equal(character.skirt.name, 'ive-skirt');
     assert.equal(character.label.firstChild.textContent, 'CHERRY');
