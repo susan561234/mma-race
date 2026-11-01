@@ -5,9 +5,9 @@ const number = new Intl.NumberFormat('zh-TW');
 const white = '#f4f4ed';
 const iveFaceSide = [
   [[0, .53], [.24, .53], [.4, .49], [.5, .39]],
-  [[.5, .39], [.65, .3], [.59, .09], [.59, -.13]],
-  [[.59, -.13], [.59, -.22], [.642, -.32], [.5, -.4]],
-  [[.5, -.4], [.37, -.457], [.19, -.47], [0, -.47]],
+  [[.5, .39], [.645, .3], [.605, .09], [.598, -.13]],
+  [[.598, -.13], [.5951, -.22], [.606, -.32], [.5, -.4]],
+  [[.5, -.4], [.43, -.453], [.19, -.47], [0, -.47]],
 ].map(points => new THREE.CubicBezierCurve(...points.map(([x, y]) => new THREE.Vector2(x, y))));
 
 function material(color, roughness = .62) {
@@ -69,35 +69,55 @@ function iveFaceWidth(y) {
 
 function iveFaceDepth(x, y) {
   const width = iveFaceWidth(y);
-  return .45 * Math.sqrt(1 - ((y - .03) / .5) ** 2) * Math.sqrt(1 - (x / width) ** 2);
+  return iveHeadDepth(y) * Math.sqrt(1 - (x / width) ** 2);
+}
+
+function iveHeadDepth(y) {
+  return .46 * (1 - ((y - .03) / .5) ** 4) ** .25;
 }
 
 function createIveHeadGeometry() {
   const geometry = new THREE.SphereGeometry(1, 64, 64);
-  const positions = geometry.attributes.position;
+  const { position: positions, normal: normals } = geometry.attributes;
+  const normal = new THREE.Vector3();
   for (let index = 0; index < positions.count; index++) {
     const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
     const height = y * .5 + .03;
-    const radius = Math.sqrt(1 - y * y);
-    // Mirror one subtle side contour: a long upper arc and a much shorter cheek.
-    positions.setXYZ(index, radius > 0 ? x / radius * iveFaceWidth(height) : 0, height, z * .45);
+    const radius = Math.hypot(x, z);
+    if (radius < 1e-6) {
+      positions.setXYZ(index, 0, height, 0);
+      normals.setXYZ(index, 0, Math.sign(y), 0);
+      continue;
+    }
+    const width = iveFaceWidth(height), depth = iveHeadDepth(height);
+    const u = x / radius, v = z / radius;
+    const widthSlope = (iveFaceWidth(height + .0001) - iveFaceWidth(height - .0001)) / .0002;
+    const depthSlope = -.92 * y ** 3 / (1 - y ** 4) ** .75;
+    positions.setXYZ(index, u * width, height, v * depth);
+    // Keep the side full and the shading continuous across the sphere's UV seam.
+    normal.set(u / width, -widthSlope / width * u * u - depthSlope / depth * v * v, v / depth).normalize();
+    normals.setXYZ(index, normal.x, normal.y, normal.z);
   }
-  geometry.computeVertexNormals();
   return geometry;
 }
 
 function createLongEarGeometry(front) {
   const geometry = new THREE.SphereGeometry(1, 48, 48, front ? 0 : Math.PI, Math.PI);
-  const positions = geometry.attributes.position;
+  const { position: positions, normal: normals } = geometry.attributes;
+  const normal = new THREE.Vector3();
   for (let index = 0; index < positions.count; index++) {
     const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
     const t = (1 - y) / 2;
+    const width = .12 + .35 * t, depth = .14 + .12 * t;
     // The broad lower ear fans outward, then turns inward behind the hands.
-    positions.setXYZ(index, .4 * Math.sin(Math.PI * t) + x * (.12 + .35 * t),
-      -1.55 * t, z * (.14 + .12 * t) - .08 * t);
+    positions.setXYZ(index, .4 * Math.sin(Math.PI * t) + x * width, -1.55 * t, z * depth - .08 * t);
+    const nx = x / width, nz = z / depth;
+    // Transform the original sphere normal so both panels agree along their rim.
+    const ny = (2 * y + (.4 * Math.PI * Math.cos(Math.PI * t) + .35 * x) * nx + (.12 * z - .08) * nz) / 1.55;
+    normal.set(nx, ny, nz).normalize();
+    normals.setXYZ(index, normal.x, normal.y, normal.z);
   }
   positions.needsUpdate = true;
-  geometry.computeVertexNormals();
   geometry.computeBoundingBox();
   return geometry;
 }
