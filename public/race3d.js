@@ -3,7 +3,12 @@ import { characterProfile, runningPose, trackPosition } from './characters.js';
 
 const number = new Intl.NumberFormat('zh-TW');
 const white = '#f4f4ed';
-const iveFace = { width: .59, height: .5, depth: .4, exponent: 4 };
+const iveFaceSide = [
+  [[0, .53], [.24, .53], [.4, .49], [.5, .39]],
+  [[.5, .39], [.65, .3], [.59, .09], [.59, -.13]],
+  [[.59, -.13], [.59, -.22], [.642, -.32], [.5, -.4]],
+  [[.5, -.4], [.37, -.457], [.19, -.47], [0, -.47]],
+].map(points => new THREE.CubicBezierCurve(...points.map(([x, y]) => new THREE.Vector2(x, y))));
 
 function material(color, roughness = .62) {
   return new THREE.MeshStandardMaterial({ color, roughness });
@@ -48,41 +53,41 @@ function disposeTree(root) {
   textures.forEach(item => item.dispose());
 }
 
+function iveFaceWidth(y) {
+  const curve = iveFaceSide.find(segment => y <= segment.v0.y && y >= segment.v3.y);
+  if (!curve) throw new RangeError('CHERRY face coordinate is outside the head surface');
+  let low = 0, high = 1;
+  const point = new THREE.Vector2();
+  for (let index = 0; index < 20; index++) {
+    const t = (low + high) / 2;
+    curve.getPoint(t, point);
+    if (point.y > y) low = t;
+    else high = t;
+  }
+  return curve.getPoint((low + high) / 2, point).x;
+}
+
 function iveFaceDepth(x, y) {
-  return iveFace.depth * Math.sqrt(1 - Math.abs(x / iveFace.width) ** iveFace.exponent - Math.abs(y / iveFace.height) ** iveFace.exponent);
+  const width = iveFaceWidth(y);
+  return .45 * Math.sqrt(1 - ((y - .03) / .5) ** 2) * Math.sqrt(1 - (x / width) ** 2);
 }
 
 function createIveHeadGeometry() {
-  const geometry = new THREE.SphereGeometry(1, 64, 48);
+  const geometry = new THREE.SphereGeometry(1, 64, 64);
   const positions = geometry.attributes.position;
   for (let index = 0; index < positions.count; index++) {
     const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
-    positions.setXYZ(index,
-      Math.sign(x) * Math.abs(x) ** (2 / iveFace.exponent) * iveFace.width,
-      Math.sign(y) * Math.abs(y) ** (2 / iveFace.exponent) * iveFace.height,
-      z * iveFace.depth);
+    const height = y * .5 + .03;
+    const radius = Math.sqrt(1 - y * y);
+    // Mirror one subtle side contour: a long upper arc and a much shorter cheek.
+    positions.setXYZ(index, radius > 0 ? x / radius * iveFaceWidth(height) : 0, height, z * .45);
   }
   geometry.computeVertexNormals();
   return geometry;
 }
 
-function addIveOutline(object, name, thickness) {
-  const geometry = object.geometry.clone();
-  const { position, normal } = geometry.attributes;
-  for (let index = 0; index < position.count; index++) {
-    position.setXYZ(index,
-      position.getX(index) + normal.getX(index) * thickness,
-      position.getY(index) + normal.getY(index) * thickness,
-      position.getZ(index) + normal.getZ(index) * thickness);
-  }
-  const outline = mesh(object, geometry, new THREE.MeshBasicMaterial({ color: '#151716', side: THREE.BackSide }));
-  outline.name = name;
-  outline.castShadow = false;
-  outline.receiveShadow = false;
-}
-
-function createLongEarGeometry() {
-  const geometry = new THREE.SphereGeometry(1, 48, 48);
+function createLongEarGeometry(front) {
+  const geometry = new THREE.SphereGeometry(1, 48, 48, front ? 0 : Math.PI, Math.PI);
   const positions = geometry.attributes.position;
   for (let index = 0; index < positions.count; index++) {
     const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
@@ -137,20 +142,14 @@ function createIveFaceCurve(head, name, points, ink, radius = .008) {
 }
 
 function createIveEye(head, side, ink) {
-  const x = side * .235, y = -.125;
-  const dome = new THREE.Shape();
-  dome.moveTo(x - .085, y - .13);
-  dome.quadraticCurveTo(x - .11, y - .13, x - .108, y - .10);
-  dome.lineTo(x - .1, y + .025);
-  dome.bezierCurveTo(x - .098, y + .155, x + .098, y + .155, x + .1, y + .025);
-  dome.lineTo(x + .108, y - .10);
-  dome.quadraticCurveTo(x + .11, y - .13, x + .085, y - .13);
-  dome.closePath();
-  createIveFaceShape(head, 'ive-eye', dome, ink);
-  createIveFaceMark(head, 'ive-eye-low-reflection', x, y - .078, .053, .02, '#242628', 1, .85, .009);
-  createIveFaceMark(head, 'ive-eye-highlight', x - .003, y + .045, .024, .034, '#ffffff', 1, .85, .011);
+  const x = side * .24, y = -.125;
+  const eye = new THREE.Shape();
+  eye.absellipse(x, y, .118, .122, 0, Math.PI * 2, false, 0);
+  createIveFaceShape(head, 'ive-eye', eye, ink);
+  createIveFaceMark(head, 'ive-eye-highlight', x - side * .015, y + .045, .03, .033, '#ffffff', 1, .85, .011);
+  createIveFaceMark(head, 'ive-eye-secondary-highlight', x + side * .008, y - .05, .021, .023, '#ffffff', 1, .85, .011);
   createIveFaceCurve(head, 'ive-upper-eyelid',
-    [[x - .1, y + .025], [x - .098, y + .155], [x + .098, y + .155], [x + .1, y + .025]], ink);
+    [[x - .115, y + .015], [x - .12, y + .155], [x + .11, y + .158], [x + .118, y + .012]], ink);
   createIveFaceCurve(head, 'ive-outer-eye-arc',
     [[x + side * .095, y + .085], [x + side * .169, y + .082],
       [x + side * .175, y - .075], [x + side * .14, y - .12]], ink);
@@ -233,22 +232,22 @@ function createIveCharacter(profile) {
   head.scale.set(1.18, 1.14, 1.14);
   const face = mesh(head, createIveHeadGeometry(), fur);
   face.name = 'ive-face';
-  addIveOutline(face, 'ive-face-outline', .012);
   const ears = [];
   for (const side of [-1, 1]) {
     const ear = pivot(head, side * .44, .37, -.2);
     ear.name = 'ive-long-ear';
-    const earSurface = mesh(ear, createLongEarGeometry(), fur);
-    earSurface.name = 'ive-ear-surface';
-    addIveOutline(earSurface, 'ive-ear-outline', .012);
+    for (const front of [true, false]) {
+      const panel = mesh(ear, createLongEarGeometry(front), fur);
+      panel.name = front ? 'ive-ear-front' : 'ive-ear-back';
+    }
     ear.scale.x = side;
     ears.push(ear);
     createIveEye(head, side, black);
-    createIveFaceMark(head, 'ive-blush', side * .405, -.325, .115, .07, '#eea4b7', .5, .2);
+    createIveFaceMark(head, 'ive-blush', side * .445, -.31, .09, .095, '#f2b0c9', .65, .6);
   }
   // Left and right refer to the viewer looking straight at CHERRY.
-  createIveFaceMark(head, 'ive-left-cheek-dot', -.413, -.29, .0065, .0065, '#343638', 1, .7, .006);
-  createIveFaceMark(head, 'ive-right-cheek-dot', .36, -.377, .006, .006, '#343638', 1, .7, .006);
+  createIveFaceMark(head, 'ive-left-cheek-dot', -.448, -.29, .008, .008, '#343638', 1, .7, .006);
+  createIveFaceMark(head, 'ive-right-cheek-dot', .35, -.373, .0075, .0075, '#343638', 1, .7, .006);
   createIveFaceMark(head, 'ive-nose', 0, -.29, .028, .016, '#111314', 1, .85);
   for (const side of [-1, 1]) {
     createIveFaceCurve(head, 'ive-mouth',
@@ -263,10 +262,16 @@ function createIveCharacter(profile) {
   ball(hat, blue, [0, .085, 0], [.65, .28, .51]);
   mesh(hat, new THREE.TorusGeometry(.54, .037, 8, 32), piping, [0, -.025, 0], [1, .86, 1]).rotation.x = Math.PI / 2;
   ball(hat, piping, [0, .37, 0], [.055, .055, .05]);
-  // Small white stitched emblem on the beret, matching the reference's placement.
-  for (const side of [-1, 1]) ball(hat, fur, [.34 + side * .025, .13, .446], [.03, .033, .018]);
-  const stitch = mesh(hat, new THREE.TorusGeometry(.045, .015, 6, 12, Math.PI), fur, [.34, .23, .42]);
-  stitch.rotation.z = Math.PI;
+  for (const side of [-1, 1]) {
+    const x = .35 + side * .035;
+    ball(hat, fur, [x, .13, .449], [.041, .04, .018]);
+    const leaf = ball(hat, fur, [x, .235, .43], [.04, .018, .012]);
+    leaf.rotation.z = side * .45;
+    const stem = new THREE.CubicBezierCurve3(
+      new THREE.Vector3(.35, .225, .435), new THREE.Vector3(.35, .2, .447),
+      new THREE.Vector3(x, .195, .451), new THREE.Vector3(x, .16, .451));
+    mesh(hat, new THREE.TubeGeometry(stem, 12, .007, 6, false), fur);
+  }
   const scarf = pivot(body, 0, 1.5, -.1);
   const arms = [], legs = [];
   for (const side of [-1, 1]) {
